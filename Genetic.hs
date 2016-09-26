@@ -111,7 +111,7 @@ class BitRepresentation a where
    fromBits :: [Bool] -> a
 
 instance BitRepresentation Int where
-   toBits = go
+   toBits = padInt . go
       where go x | x == 1    = [True]
                  | x == 0    = [False]
                  | otherwise = toBits (x `div` 2) ++ [(x `mod` 2 == 1)]
@@ -122,7 +122,24 @@ instance BitRepresentation Int where
          mult False _ = 0
          powers = map (2^) [0..]
 
+-- |Pads a list to the left to a maximum length of @len@.
+padLeft
+   :: a -- ^Padding element.
+   -> Int -- ^The resultant length.
+   -> [a]
+   -> [a]
+padLeft elem len xs = replicate (len - length xs) elem ++ xs
+
+-- |Pads the bit representation of an Int to its maximum length with False.
+padInt = padLeft False (length $ toBits (maxBound :: Int))
+
 -- |Takes two parents introduces a single point of crossover in their
 --  bit representations.
 crossover :: BitRepresentation a => a -> a -> IO [a]
-crossover = undefined
+crossover x y = do
+   let xb = toBits x
+       yb = toBits y
+   crossoverPoint <- randomRIO (0, length xb)
+   let xChild = take crossoverPoint xb ++ drop crossoverPoint yb
+       yChild = take crossoverPoint yb ++ drop crossoverPoint xb
+   return [fromBits xChild, fromBits yChild]
