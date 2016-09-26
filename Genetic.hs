@@ -6,7 +6,7 @@ import System.Random (randomRIO, Random)
 -- |A genetic algorithm with mutate, mate, select and fitness functions.
 data GeneticAlgorithm elem fitness = GA {
    mutate :: elem -> IO elem,
-   mate :: elem -> elem -> elem,
+   mate :: elem -> elem -> [elem],
    select :: fitness -> fitness -> IO Bool,
    fitness :: elem -> fitness
 }
@@ -26,7 +26,7 @@ runGenetic (GA mutate mate select fitness) pop = do
    selectedPop <- filterM (\(_,fit) -> select sumFitness fit) fitnesses
 
    couples <- selectPairs $ map fst selectedPop
-   children <- mapM (mutate . uncurry mate) couples
+   children <- mapM mutate . concat . map (uncurry mate) $ couples
    return children
 
 runSimulation :: Monad m => (a -> m a) -> Int -> a -> m a
@@ -91,7 +91,11 @@ findNumber target mutateRate = GA mutate mate (stdSelect 10 0 ) fitness
          y <- randomRIO (negate mutateRate, mutateRate)
          return (x+y)
 
-      mate x y = (x+y) `div` 2
+      mate x y = [round $ a + ((b-a) * (1/3)),
+                  round $ a + ((b-a) * (2/3))]
+         where
+            (a,b) = if x <= y then (fromIntegral x, fromIntegral y)
+                              else (fromIntegral y,fromIntegral x)
 
       fitness x = max 0 (1 - (diff / fromIntegral target))
          where
