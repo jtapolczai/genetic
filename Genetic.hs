@@ -104,3 +104,25 @@ findNumber target mutateRate = GA mutate mate (stdSelect 10 0 ) fitness
 
 numberSimulation :: Int -> IO (Population Int)
 numberSimulation steps = runSimulation (runGenetic (findNumber 100 10)) steps [1..200]
+
+-- |Datatypes that can be represented as bits.
+class BitRepresentation a where
+   toBits :: a -> [Bool]
+   fromBits :: [Bool] -> a
+
+instance BitRepresentation Int where
+   toBits = go
+      where go x | x == 1    = [True]
+                 | x == 0    = [False]
+                 | otherwise = toBits (x `div` 2) ++ [(x `mod` 2 == 1)]
+
+   fromBits x = sum $ zipWith mult (reverse x) powers
+      where
+         mult True x = x
+         mult False _ = 0
+         powers = map (2^) [0..]
+
+-- |Takes two parents introduces a single point of crossover in their
+--  bit representations.
+crossover :: BitRepresentation a => a -> a -> IO [a]
+crossover = undefined
