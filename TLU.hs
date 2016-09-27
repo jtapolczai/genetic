@@ -19,8 +19,8 @@ inputToFloat = map tof
 
 -- |Computes the dot product of two vectors. If one vector is longer than the
 --  other, the overlong part is discarded.
-dotProduct :: Num a => [a] -> [a] -> [a]
-dotProduct = zipWith (*)
+dotProduct :: Num a => [a] -> [a] -> a
+dotProduct x y = sum $ zipWith (*) x y
 
 -- |Multiplies each component of a vector with a scalar.
 scalarProduct :: Num a => a -> [a] -> [a]
@@ -36,7 +36,7 @@ vectorSubtract = zipWith (-)
 
 -- |Feed an input vector to a TLU return 0 (False) or 1 (True).
 runTLU :: InputVector -> TLU -> Bool
-runTLU input (TLU w) = (>=0) . sum $ dotProduct input' w
+runTLU input (TLU w) = (>=0) $ dotProduct input' w
    where
       input' = inputToFloat input
 
@@ -64,8 +64,30 @@ trainTLU (TLU w) input expected c =
 trainTLUMany
    :: TLU
    -> [(InputVector, Bool, Float)]
-      -- ^The training data, with expected result and leanring rate.
+      -- ^The training data, with expected result and learning rate.
    -> TLU
 trainTLUMany tlu = foldl' f tlu
    where
       f t (i,e,c) = trainTLU t i e c
+
+trainTLUFractional
+   :: TLU
+   -> InputVector
+   -> Bool
+   -> Float -- ^Lambda
+   -> TLU
+trainTLUFractional (TLU w) input expected lambda = trainTLU (TLU w) input expected c
+   where
+      input' = inputToFloat input
+      c = lambda * ((dotProduct input' w) / (dotProduct input' input'))
+
+-- |Trains a TLU with a series of input vectors.
+trainTLUManyFractional
+   :: TLU
+   -> Float -- ^Lambda.
+   -> [(InputVector, Bool)]
+      -- ^The training data, with expected result.
+   -> TLU
+trainTLUManyFractional tlu lambda = foldl' f tlu
+   where
+      f t (i,e) = trainTLUFractional t i e lambda
