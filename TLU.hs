@@ -1,4 +1,8 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module TLU where
+
+import Data.Foldable (foldl')
 
 data TLU = TLU {
    weights :: [Float]
@@ -47,3 +51,13 @@ trainTLU (TLU w) input expected c =
       actual = runTLU input (TLU w)
 
       adjustedTLU = TLU (w `vectorSubtract` scalarProduct c input')
+
+-- |Trains a TLU with a series of input vectors.
+trainTLUMany
+   :: TLU
+   -> [(InputVector, Bool, Float)]
+      -- ^The training data, with expected result and leanring rate.
+   -> TLU
+trainTLUMany tlu = foldl' f tlu
+   where
+      f t (i,e,c) = trainTLU t i e c
