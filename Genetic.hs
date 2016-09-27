@@ -125,7 +125,7 @@ instance BitRepresentation Int where
          mult False _ = 0
          powers = map (2^) [0..]
 
-   bitLength _ = 64
+   bitLength _ = 16
 
 -- |Pads a list to the left to a maximum length of @len@.
 padLeft
@@ -142,6 +142,7 @@ crossover x y = do
    let xb = toBits x
        yb = toBits y
    crossoverPoint <- randomRIO (0, length xb)
+   traceM $ show crossoverPoint
    let xChild = take crossoverPoint xb ++ drop crossoverPoint yb
        yChild = take crossoverPoint yb ++ drop crossoverPoint xb
    return [fromBits xChild, fromBits yChild]
