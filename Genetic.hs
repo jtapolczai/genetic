@@ -8,10 +8,13 @@ import Debug.Trace
 -- |A genetic algorithm with mutate, mate, select and fitness functions.
 data GeneticAlgorithm elem fitness = GA {
    mutate :: elem -> IO elem,
-   mate :: elem -> elem -> [elem],
+   mate :: Combinator elem,
    select :: fitness -> fitness -> IO Bool,
    fitness :: elem -> fitness
 }
+
+-- |A recombinator function that generates child elements from parents.
+type Combinator a = a -> a -> IO [a]
 
 -- |A population of individuals
 type Population a = [a]
@@ -28,8 +31,9 @@ runGenetic (GA mutate mate select fitness) pop = do
    selectedPop <- filterM (\(_,fit) -> select sumFitness fit) fitnesses
 
    couples <- selectPairs $ map fst selectedPop
-   children <- mapM mutate . concat . map (uncurry mate) $ couples
-   return children
+   children <- mapM (uncurry mate) couples
+   mutatedChildren <- mapM mutate $ concat children
+   return mutatedChildren
 
 runSimulation :: Monad m => (a -> m a) -> Int -> a -> m a
 runSimulation _ steps x | steps <= 0 = return x
@@ -93,8 +97,8 @@ findNumber target mutateRate = GA mutate mate (stdSelect 10 0 ) fitness
          y <- randomRIO (negate mutateRate, mutateRate)
          return (x+y)
 
-      mate x y = [round $ a + ((b-a) * (1/3)),
-                  round $ a + ((b-a) * (2/3))]
+      mate x y = return [round $ a + ((b-a) * (1/3)),
+                         round $ a + ((b-a) * (2/3))]
          where
             (a,b) = if x <= y then (fromIntegral x, fromIntegral y)
                               else (fromIntegral y,fromIntegral x)
@@ -137,14 +141,27 @@ padLeft elem len xs = replicate (len - length xs) elem ++ xs
 
 -- |Takes two parents introduces a single point of crossover in their
 --  bit representations.
-crossover :: BitRepresentation a => a -> a -> IO [a]
+crossover :: BitRepresentation a => Combinator a
 crossover x y = do
    let xb = toBits x
        yb = toBits y
-   crossoverPoint <- randomRIO (0, length xb)
-   traceM $ show crossoverPoint
-   let xChild = take crossoverPoint xb ++ drop crossoverPoint yb
-       yChild = take crossoverPoint yb ++ drop crossoverPoint xb
+   cp <- randomRIO (0, length xb)
+   let xChild = take cp xb ++ drop cp yb
+       yChild = take cp yb ++ drop cp xb
+   return [fromBits xChild, fromBits yChild]
+
+-- |Takes two parents introduces a two points of crossover in their
+--  bit representations.
+twoPointCrossover :: BitRepresentation a => Combinator a
+twoPointCrossover x y = do
+   let xb = toBits x
+       yb = toBits y
+   cp1 <- randomRIO (0, length xb)
+   cp2 <- randomRIO (0, length xb)
+   let (a,b) = if cp1 <= cp2 then (cp1,cp2) else (cp2,cp1)
+       diff = b - a
+   let xChild = take a xb ++ (take diff . drop a $ yb) ++ drop b xb
+       yChild = take a yb ++ (take diff . drop a $ xb) ++ drop b yb
    return [fromBits xChild, fromBits yChild]
 
 -- |Shows a sequence of bits as a series of 1s and 0s.
