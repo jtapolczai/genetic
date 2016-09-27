@@ -26,6 +26,11 @@ dotProduct = zipWith (*)
 scalarProduct :: Num a => a -> [a] -> [a]
 scalarProduct sc = zipWith (*) (repeat sc)
 
+-- |Adds two vectors to each other, component-wise.
+vectorAdd :: Num a => [a] -> [a] -> [a]
+vectorAdd = zipWith (-)
+
+-- |Subtracts two vectors from each other, component-wise.
 vectorSubtract :: Num a => [a] -> [a] -> [a]
 vectorSubtract = zipWith (-)
 
@@ -45,12 +50,15 @@ trainTLU
    -> TLU -- ^A possibly updated TLU.
 trainTLU (TLU w) input expected c =
    if expected == actual then (TLU w)
-   else adjustedTLU
+   else if expected == False && actual == True then subtractedTLU
+   else addedTLU
    where
       input' = inputToFloat input
       actual = runTLU input (TLU w)
 
-      adjustedTLU = TLU (w `vectorSubtract` scalarProduct c input')
+      subtractedTLU = TLU (w `vectorSubtract` scalarProduct c input')
+      addedTLU = TLU (w `vectorAdd` scalarProduct c input')
+
 
 -- |Trains a TLU with a series of input vectors.
 trainTLUMany
