@@ -3,6 +3,8 @@ module Genetic where
 import Control.Monad (filterM)
 import System.Random (randomRIO, Random)
 
+import Debug.Trace
+
 -- |A genetic algorithm with mutate, mate, select and fitness functions.
 data GeneticAlgorithm elem fitness = GA {
    mutate :: elem -> IO elem,
@@ -109,12 +111,13 @@ numberSimulation steps = runSimulation (runGenetic (findNumber 100 10)) steps [1
 class BitRepresentation a where
    toBits :: a -> [Bool]
    fromBits :: [Bool] -> a
+   bitLength :: a -> Int
 
 instance BitRepresentation Int where
-   toBits = padInt . go
+   toBits x = padLeft False (bitLength (0 :: Int)) (go x)
       where go x | x == 1    = [True]
                  | x == 0    = [False]
-                 | otherwise = toBits (x `div` 2) ++ [(x `mod` 2 == 1)]
+                 | otherwise = go (x `div` 2) ++ [(x `mod` 2 == 1)]
 
    fromBits x = sum $ zipWith mult (reverse x) powers
       where
@@ -122,16 +125,15 @@ instance BitRepresentation Int where
          mult False _ = 0
          powers = map (2^) [0..]
 
+   bitLength _ = 64
+
 -- |Pads a list to the left to a maximum length of @len@.
 padLeft
-   :: a -- ^Padding element.
+   :: Show a => a -- ^Padding element.
    -> Int -- ^The resultant length.
    -> [a]
    -> [a]
 padLeft elem len xs = replicate (len - length xs) elem ++ xs
-
--- |Pads the bit representation of an Int to its maximum length with False.
-padInt = padLeft False (length $ toBits (maxBound :: Int))
 
 -- |Takes two parents introduces a single point of crossover in their
 --  bit representations.
@@ -143,3 +145,10 @@ crossover x y = do
    let xChild = take crossoverPoint xb ++ drop crossoverPoint yb
        yChild = take crossoverPoint yb ++ drop crossoverPoint xb
    return [fromBits xChild, fromBits yChild]
+
+-- |Shows a sequence of bits as a series of 1s and 0s.
+bitshow :: [Bool] -> String
+bitshow = map f
+   where
+      f False = '0'
+      f True = '1'
