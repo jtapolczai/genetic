@@ -3,9 +3,17 @@
 module TLU where
 
 import Data.Foldable (foldl')
+import Data.Ord (comparing)
+import qualified Data.Vector as V
 
+-- |A 2-category treshold linear unit.
 data TLU = TLU {
    weights :: [Float]
+}
+
+-- |An R-category linear meachine.
+data LinearMachine = LM {
+   lmweights :: V.Vector [Float]
 }
 
 -- |An input vector to a TLU, with True representing 1 and False representing 0.
@@ -38,6 +46,19 @@ vectorSubtract = zipWith (-)
 runTLU :: InputVector -> TLU -> Bool
 runTLU input (TLU w) = (>=0) $ dotProduct input' w
    where
+      input' = inputToFloat input
+
+-- |Feed an input vector to a linear machine return a classification from 0
+--  to N.
+runLinearMachine :: InputVector -> LinearMachine -> Int
+runLinearMachine input (LM ws) =
+   fst
+   . V.maximumBy (comparing snd)
+   . fmap (\(i, w) -> (i, dotProduct input' w))
+   . V.zip oneToN
+   $ ws
+   where
+      oneToN = V.iterateN (V.length ws) (+1) 1
       input' = inputToFloat input
 
 -- |Trains a TLU with an input vector. If the TLU outputs the wrong result,
